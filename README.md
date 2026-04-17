@@ -1,6 +1,7 @@
 # ChordDex
 
 Real-time chord & note recognizer for Ableton Move.
+It's a didactic overlay for Move's chromatic mode: play any combination of pads and it names the chord on screen (plus the individual notes)
 Tool module for the [Schwung](https://github.com/charlesvestal/schwung) platform.
 
 
