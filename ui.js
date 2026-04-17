@@ -7,15 +7,28 @@ var NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 // All intervals mod 12. Patterns are pitch-class sets, not voicings.
 // Order matters only for tie-breaking when multiple patterns match.
 var CHORD_PATTERNS = [
-  // 5-note (9ths) — checked first so richer chords win
-  { i: [0,2,4,7,10], n: '9'    },
-  { i: [0,2,4,7,11], n: 'maj9' },
-  { i: [0,2,3,7,10], n: 'm9'   },
+  // 6-note extensions
+  { i: [0,2,4,5,7,11], n: 'maj11' },
+  // 5-note (9ths/11ths/13ths)
+  { i: [0,2,4,7,10], n: '9'     },
+  { i: [0,2,4,7,11], n: 'maj9'  },
+  { i: [0,2,3,7,10], n: 'm9'    },
+  { i: [0,1,4,7,10], n: '7b9'   },
+  { i: [0,3,4,7,10], n: '7#9'   },
+  { i: [0,2,4,6,10], n: '9b5'   },
+  { i: [0,2,4,8,10], n: '9#5'   },
+  { i: [0,2,4,7,9],  n: '6/9'   },
+  { i: [0,2,5,7,10], n: '11'    },
+  { i: [0,3,5,7,10], n: 'm11'   },
+  { i: [0,4,7,9,10], n: '13'    },
+  { i: [0,3,7,9,10], n: 'm13'   },
+  { i: [0,4,7,9,11], n: 'maj13' },
   // 4-note sixths and sevenths
   { i: [0,4,7,11],   n: 'maj7' },
   { i: [0,4,7,10],   n: '7'    },
   { i: [0,3,7,10],   n: 'm7'   },
   { i: [0,3,7,11],   n: 'mM7'  },
+  { i: [0,4,6,10],   n: '7b5'  },
   { i: [0,3,6,10],   n: 'm7b5' },
   { i: [0,3,6,9],    n: 'dim7' },
   { i: [0,4,8,10],   n: '7#5'  },
@@ -120,6 +133,35 @@ function padsAllOff() {
   for (var n = 68; n <= 99; n++) padLed(n, 0);
 }
 
+// Absolute pitch in semitones (no mod 12) for a pad MIDI number.
+function absSemi(note) {
+  var base = note - 68;
+  var r = Math.floor(base / 8);
+  var c = base - r * 8;
+  return 9 + r * 5 + c;
+}
+
+function semiHasActive(ts) {
+  for (var k in activeNotes) {
+    if (absSemi(+k) === ts) return true;
+  }
+  return false;
+}
+
+// Light all pads that produce the exact same pitch (isomorphic duplicates).
+function paintTwins(note, on) {
+  var ts = absSemi(note);
+  for (var n = 68; n <= 99; n++) {
+    if (absSemi(n) !== ts) continue;
+    if (on) {
+      padLed(n, LED_PRESSED);
+    } else {
+      if (semiHasActive(ts)) padLed(n, LED_PRESSED);
+      else padLed(n, baseColor(n));
+    }
+  }
+}
+
 // Move pad layout: MIDI = 68 + row*8 + col, pitch = A(9) + row*5 + col semitones.
 // Rows are sequential (8 MIDI notes apart) but musically 5 semitones apart.
 function pc(note) {
@@ -161,7 +203,15 @@ function getChord() {
   var bassPc = pc(nums[0]);
 
   if (pcs.length === 1) {
-    return { name: NOTE_NAMES[pcs[0]], notes: [NOTE_NAMES[pcs[0]]] };
+    var nm = NOTE_NAMES[pcs[0]];
+    var semiSet = {};
+    for (var si = 0; si < nums.length; si++) semiSet[absSemi(nums[si])] = 1;
+    var distinctSemis = 0;
+    for (var ss in semiSet) distinctSemis++;
+    if (distinctSemis > 1) {
+      return { name: nm + ' Octave', notes: [nm] };
+    }
+    return { name: nm, notes: [nm] };
   }
 
   // Exact pc-set match; prefer root == bass, then larger pattern.
@@ -234,7 +284,12 @@ var FONT_5x7 = {
   'F':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
   'G':[0x0E,0x11,0x10,0x17,0x11,0x11,0x0E],
   'M':[0x11,0x1B,0x15,0x15,0x11,0x11,0x11],
+  'O':[0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],
   'a':[0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F],
+  'c':[0x00,0x00,0x0E,0x10,0x10,0x10,0x0E],
+  'e':[0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E],
+  't':[0x08,0x08,0x1E,0x08,0x08,0x09,0x06],
+  'v':[0x00,0x00,0x11,0x11,0x11,0x0A,0x04],
   'b':[0x10,0x10,0x10,0x1E,0x11,0x11,0x1E],
   'd':[0x01,0x01,0x01,0x0F,0x11,0x11,0x0F],
   'g':[0x00,0x0E,0x11,0x11,0x0F,0x01,0x0E],
@@ -244,7 +299,9 @@ var FONT_5x7 = {
   's':[0x00,0x00,0x0E,0x10,0x0E,0x01,0x1E],
   'u':[0x00,0x00,0x11,0x11,0x11,0x11,0x0F],
   '0':[0x0E,0x13,0x15,0x19,0x11,0x11,0x0E],
+  '1':[0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
   '2':[0x0E,0x11,0x01,0x02,0x04,0x08,0x1F],
+  '3':[0x0E,0x11,0x01,0x06,0x01,0x11,0x0E],
   '4':[0x02,0x06,0x0A,0x12,0x1F,0x02,0x02],
   '5':[0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
   '6':[0x06,0x08,0x10,0x1E,0x11,0x11,0x0E],
@@ -356,14 +413,14 @@ globalThis.onMidiMessageInternal = function(msg) {
       activeNotes[note] = vel;
       lastVelocity = vel;
       lastRawNote  = note;
-      padLed(note, LED_PRESSED);
+      paintTwins(note, true);
       dirty = true;
     }
 
   } else if (st === 0x80 || (st === 0x90 && vel === 0)) {
     if (isPad) {
       delete activeNotes[note];
-      padLed(note, baseColor(note));
+      paintTwins(note, false);
       dirty = true;
     }
 
