@@ -3,20 +3,20 @@
 Real-time chord & note recognizer for Ableton Move.
 Tool module for the [Schwung](https://github.com/charlesvestal/schwung) platform.
 
-Catch 'em all.
+
 
 ## Features
 
 - Detects chords played on the Move pads and displays the name on the 128×64 screen
 - Supports triads, 6ths, 7ths, 9ths, sus, add, power, and slash chords
 - Uses the bass note as a tiebreaker for ambiguous voicings (e.g. `C6` vs `Am7`)
-- Pokédex-inspired pad coloring:
+- Pad coloring:
   - **Root** (C): white
   - **In-scale** notes (C major): red
   - **Out-of-scale** notes: off
   - **Pressed** pads: yellow
 - Big 2x-scaled chord name on screen with auto-shrink
-- Back button exits cleanly to the Tools menu
+
 
 ## Install
 
