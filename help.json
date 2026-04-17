@@ -1,0 +1,174 @@
+{
+  "title": "ChordDex",
+  "children": [
+    {
+      "title": "Overview",
+      "lines": [
+        "Real-time chord",
+        "and note recognizer",
+        "for Move's chromatic",
+        "pads.",
+        "",
+        "Didactic overlay,",
+        "no audio output.",
+        "",
+        "Play pads: chord",
+        "name shows on the",
+        "screen."
+      ]
+    },
+    {
+      "title": "Pad Colors",
+      "lines": [
+        "Pokedex-style",
+        "palette highlights",
+        "C major scale:",
+        "",
+        "White: root (C)",
+        "Red: in-scale notes",
+        "Off: out-of-scale",
+        "Yellow: pressed pad",
+        "",
+        "Isomorphic twin",
+        "pads (same pitch)",
+        "light together."
+      ]
+    },
+    {
+      "title": "Screen",
+      "lines": [
+        "Title bar shows",
+        "CHORDDEX.",
+        "",
+        "Center: chord name",
+        "in large font.",
+        "Auto-shrinks if the",
+        "name is too long.",
+        "",
+        "Bottom: list of",
+        "note names held,",
+        "deduped by pitch",
+        "class."
+      ]
+    },
+    {
+      "title": "Chords",
+      "children": [
+        {
+          "title": "Supported",
+          "lines": [
+            "Triads: maj, m,",
+            "dim, aug, sus2,",
+            "sus4, power 5.",
+            "",
+            "6ths: 6, m6, 6/9.",
+            "",
+            "7ths: 7, maj7, m7,",
+            "mM7, m7b5, dim7,",
+            "7b5, 7#5, 7sus4.",
+            "",
+            "9ths: 9, maj9, m9,",
+            "add9, madd9, 7b9,",
+            "7#9, 9b5, 9#5.",
+            "",
+            "11/13: 11, m11,",
+            "maj11, 13, m13,",
+            "maj13."
+          ]
+        },
+        {
+          "title": "Bass Tiebreak",
+          "lines": [
+            "If a voicing fits",
+            "more than one",
+            "chord, the lowest",
+            "note decides.",
+            "",
+            "Example:",
+            "C E G A with C",
+            "as the bass shows",
+            "C6.",
+            "",
+            "Same notes with A",
+            "as bass shows Am7."
+          ]
+        },
+        {
+          "title": "Slash Chords",
+          "lines": [
+            "When the bass is",
+            "not the root, the",
+            "name includes it:",
+            "",
+            "C/E means C major",
+            "with E in the bass.",
+            "",
+            "Useful for",
+            "inversions and",
+            "bass lines."
+          ]
+        },
+        {
+          "title": "Octave",
+          "lines": [
+            "Two pads playing",
+            "the same pitch",
+            "class in different",
+            "octaves show as:",
+            "",
+            "C Octave",
+            "",
+            "Duplicate pads of",
+            "the same pitch do",
+            "not count."
+          ]
+        },
+        {
+          "title": "Unknown",
+          "lines": [
+            "If no pattern",
+            "matches, the",
+            "closest fit is",
+            "shown with a '?'",
+            "",
+            "Example: Cmaj7?",
+            "means the voicing",
+            "is close to Cmaj7",
+            "but has extra or",
+            "missing notes."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Exit",
+      "lines": [
+        "Press the Back",
+        "button to return",
+        "to the Tools menu.",
+        "",
+        "Pads reset to the",
+        "native chromatic",
+        "coloring after",
+        "exit."
+      ]
+    },
+    {
+      "title": "Notes",
+      "lines": [
+        "Scale is fixed at",
+        "C major. Keys and",
+        "scales planned for",
+        "a future update.",
+        "",
+        "No MIDI out: the",
+        "module does not",
+        "drive a synth.",
+        "",
+        "Source and issues:",
+        "github.com/",
+        " dony01001/ChordDex"
+      ]
+    }
+  ]
+}

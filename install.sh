@@ -19,6 +19,7 @@ ssh "${MOVE_USER}@${MOVE_HOST}" "rm -rf /data/UserData/schwung/modules/tools/${O
 ssh "${MOVE_USER}@${MOVE_HOST}" "mkdir -p ${REMOTE_DIR}"
 scp module.json "${MOVE_USER}@${MOVE_HOST}:${REMOTE_DIR}/module.json"
 scp ui.js       "${MOVE_USER}@${MOVE_HOST}:${REMOTE_DIR}/ui.js"
+scp help.json   "${MOVE_USER}@${MOVE_HOST}:${REMOTE_DIR}/help.json"
 
 # Ensure no stale dsp.so from previous experiments
 ssh "${MOVE_USER}@${MOVE_HOST}" "rm -f ${REMOTE_DIR}/dsp.so"

@@ -339,6 +339,31 @@ function bigPrintCentered(y, text, color, scale) {
   bigPrint(x, y, text, color, scale);
 }
 
+// Screen reader support — announce changes for blind users.
+var lastAnnouncedLabel = '';
+
+function announce(text) {
+  if (typeof host_send_screenreader === 'function') {
+    host_send_screenreader(text);
+  } else if (typeof host_announce_screenreader === 'function') {
+    host_announce_screenreader(text);
+  }
+}
+
+// Convert a chord label (e.g. "C#m7") into a spoken form for TTS.
+function speakLabel(label) {
+  if (!label) return '';
+  var out = '';
+  for (var i = 0; i < label.length; i++) {
+    var ch = label.charAt(i);
+    if (ch === '#') out += ' sharp ';
+    else if (ch === 'b' && i > 0 && /[A-G]/.test(label.charAt(i - 1))) out += ' flat ';
+    else if (ch === '/') out += ' over ';
+    else out += ch;
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
 function draw() {
   clear_screen();
 
@@ -371,6 +396,13 @@ function draw() {
     print(Math.max(2, Math.floor((128 - nw) / 2)), 52, noteStr, 1);
   }
 
+  // Screen reader: announce chord label when it changes.
+  var label = chord ? chord.name : '';
+  if (label !== lastAnnouncedLabel) {
+    lastAnnouncedLabel = label;
+    if (label) announce(speakLabel(label));
+  }
+
   dirty = false;
 }
 
@@ -378,8 +410,10 @@ globalThis.init = function() {
   activeNotes  = {};
   lastVelocity = 0;
   lastRawNote  = -1;
+  lastAnnouncedLabel = '';
   dirty        = true;
   schedulePaintBase();
+  announce('ChordDex. Play pads to detect chords.');
   draw();
 };
 
