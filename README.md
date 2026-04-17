@@ -10,24 +10,35 @@ Catch 'em all.
 - Detects chords played on the Move pads and displays the name on the 128×64 screen
 - Supports triads, 6ths, 7ths, 9ths, sus, add, power, and slash chords
 - Uses the bass note as a tiebreaker for ambiguous voicings (e.g. `C6` vs `Am7`)
-- Chromatic pad coloring by key:
-  - **Root** (C): vivid green
-  - **In-scale** notes (C major): dim white
+- Pokédex-inspired pad coloring:
+  - **Root** (C): white
+  - **In-scale** notes (C major): red
   - **Out-of-scale** notes: off
-- Pressed pads highlight in magenta
+  - **Pressed** pads: yellow
+- Big 2x-scaled chord name on screen with auto-shrink
 - Back button exits cleanly to the Tools menu
 
 ## Install
 
 Requires [Schwung](https://github.com/charlesvestal/schwung) installed on the Move.
 
+### Option A — Schwung GitHub installer (recommended)
+
+From the Schwung directory on your Move (or wherever you run its scripts):
+
 ```bash
-git clone https://github.com/<you>/chorddex.git
-cd chorddex
+./scripts/install.sh install-module-github dony01001/ChordDex
+```
+
+### Option B — Clone and SSH
+
+```bash
+git clone https://github.com/dony01001/ChordDex.git
+cd ChordDex
 bash install.sh
 ```
 
-Environment:
+Environment (Option B):
 - `MOVE_HOST` — hostname of the Move (default `move.local`)
 - `MOVE_USER` — SSH user (default `root`)
 
