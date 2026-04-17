@@ -44,11 +44,21 @@ var dirty         = true;
 var paintIndex    = 0;  // next pad to paint (0..31), 32 = done
 var PAINT_PER_TICK = 4;
 
-// LED colors (velocity byte on internal 0x90). See shared/constants.mjs.
-var LED_ROOT    = 126; // Green (vivid) — C (root)
-var LED_SCALE   = 118; // LightGrey (dim white) — notes in scale
-var LED_OUT     = 0;   // Black — notes outside scale
-var LED_PRESSED = 21;  // HotMagenta — pad currently held
+// Pokeball splash on tool open (frames of ticks).
+var splashTicks   = 0;
+var SPLASH_FRAMES = 45; // how long the splash stays before fading to scale
+
+// Pokédex palette: white screen, red body, yellow button.
+var LED_ROOT    = 120; // White — C (root), like the Pokédex screen
+var LED_SCALE   = 1;   // BrightRed — in-scale notes, Pokédex body
+var LED_OUT     = 0;   // Black — out-of-scale, off
+var LED_PRESSED = 7;   // VividYellow — pressed pad, Pokédex button
+
+// Pokeball palette
+var LED_POKE_RED    = 127; // pure red — top half
+var LED_POKE_BLACK  = 0;   // center band
+var LED_POKE_WHITE  = 120; // bottom half + button
+var LED_POKE_BUTTON = 126; // button accent (green, like a Pokéball button)
 
 // C major scale pitch classes: C D E F G A B
 var SCALE_MAJOR = { 0:1, 2:1, 4:1, 5:1, 7:1, 9:1, 11:1 };
@@ -72,6 +82,26 @@ function paintBase() {
 
 function schedulePaintBase() {
   paintIndex = 0;
+}
+
+// Pokéball splash: 4 rows x 8 cols. Row 0 = bottom.
+// Top two rows red, row 1 is the black band with a white button center,
+// bottom row white. Nostalgic Pokédex vibe.
+function pokeballColor(note) {
+  var base = note - 68;
+  var r = Math.floor(base / 8);
+  var c = base - r * 8;
+  if (r === 3) return LED_POKE_RED;        // top row
+  if (r === 2) return LED_POKE_RED;        // upper middle
+  if (r === 1) {                           // band row with center button
+    if (c === 3 || c === 4) return LED_POKE_BUTTON;
+    return LED_POKE_BLACK;
+  }
+  return LED_POKE_WHITE;                   // bottom row
+}
+
+function paintPokeball() {
+  for (var n = 68; n <= 99; n++) padLed(n, pokeballColor(n));
 }
 
 function paintTick() {
@@ -118,7 +148,16 @@ function getChord() {
   for (var p in pcSet) pcs.push(+p);
   pcs.sort(function(a, b) { return a - b; });
 
-  var noteNames = nums.map(function(n) { return NOTE_NAMES[pc(n)]; });
+  // Unique pitch classes in played order (dedupe octave doublings).
+  var seenPc = {};
+  var noteNames = [];
+  for (var nn = 0; nn < nums.length; nn++) {
+    var pcv = pc(nums[nn]);
+    if (!seenPc[pcv]) {
+      seenPc[pcv] = 1;
+      noteNames.push(NOTE_NAMES[pcv]);
+    }
+  }
   var bassPc = pc(nums[0]);
 
   if (pcs.length === 1) {
@@ -184,22 +223,94 @@ function getChord() {
   return { name: '?', notes: noteNames };
 }
 
+// 5x7 bitmap font for scaled rendering. Each glyph is 7 rows, top to
+// bottom; each row's low 5 bits are the pixels, MSB = leftmost pixel.
+var FONT_5x7 = {
+  'A':[0x0E,0x11,0x11,0x1F,0x11,0x11,0x11],
+  'B':[0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
+  'C':[0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],
+  'D':[0x1E,0x11,0x11,0x11,0x11,0x11,0x1E],
+  'E':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],
+  'F':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
+  'G':[0x0E,0x11,0x10,0x17,0x11,0x11,0x0E],
+  'M':[0x11,0x1B,0x15,0x15,0x11,0x11,0x11],
+  'a':[0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F],
+  'b':[0x10,0x10,0x10,0x1E,0x11,0x11,0x1E],
+  'd':[0x01,0x01,0x01,0x0F,0x11,0x11,0x0F],
+  'i':[0x04,0x00,0x0C,0x04,0x04,0x04,0x0E],
+  'j':[0x02,0x00,0x06,0x02,0x02,0x12,0x0C],
+  'm':[0x00,0x00,0x1A,0x15,0x15,0x15,0x15],
+  's':[0x00,0x00,0x0E,0x10,0x0E,0x01,0x1E],
+  'u':[0x00,0x00,0x11,0x11,0x11,0x11,0x0F],
+  '0':[0x0E,0x13,0x15,0x19,0x11,0x11,0x0E],
+  '2':[0x0E,0x11,0x01,0x02,0x04,0x08,0x1F],
+  '4':[0x02,0x06,0x0A,0x12,0x1F,0x02,0x02],
+  '5':[0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
+  '6':[0x06,0x08,0x10,0x1E,0x11,0x11,0x0E],
+  '7':[0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
+  '9':[0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C],
+  '#':[0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00],
+  '/':[0x01,0x02,0x04,0x08,0x10,0x00,0x00],
+  '?':[0x0E,0x11,0x01,0x06,0x04,0x00,0x04],
+  '-':[0x00,0x00,0x00,0x1F,0x00,0x00,0x00],
+  ' ':[0x00,0x00,0x00,0x00,0x00,0x00,0x00]
+};
+
+function bigPrint(x, y, text, color, scale) {
+  var s = scale || 2;
+  for (var i = 0; i < text.length; i++) {
+    var glyph = FONT_5x7[text.charAt(i)];
+    if (glyph) {
+      for (var row = 0; row < 7; row++) {
+        var bits = glyph[row];
+        for (var col = 0; col < 5; col++) {
+          if (bits & (1 << (4 - col))) {
+            fill_rect(x + col * s, y + row * s, s, s, color);
+          }
+        }
+      }
+    }
+    x += 6 * s; // 5 pixel char + 1 pixel gap, scaled
+  }
+}
+
+function bigPrintCentered(y, text, color, scale) {
+  var s = scale || 2;
+  var w = text.length * 6 * s - s;
+  var x = Math.max(0, Math.floor((128 - w) / 2));
+  bigPrint(x, y, text, color, scale);
+}
+
 function draw() {
   clear_screen();
 
-  // Header
-  fill_rect(0, 0, 128, 11, 1);
-  print(3, 2, 'CHORD DETECTOR', 0);
+  // Slim header
+  fill_rect(0, 0, 128, 9, 1);
+  print(2, 1, 'CHORDDEX', 0);
 
   var chord = getChord();
 
   if (!chord) {
-    print(3, 18, '---', 1);
-    print(3, 32, 'play some pads', 1);
+    bigPrintCentered(22, '---', 1, 2);
+    var msg = 'play some pads';
+    print(Math.floor((128 - msg.length * 6) / 2), 52, msg, 1);
   } else {
-    print(3, 14, chord.name, 1);
+    // Auto-shrink: scale 2x if chord name fits (<=10 chars), else small.
+    if (chord.name.length * 12 <= 128) {
+      bigPrintCentered(18, chord.name, 1, 2);
+    } else {
+      // Fallback to normal print, centered.
+      var cw = chord.name.length * 6;
+      print(Math.max(2, Math.floor((128 - cw) / 2)), 24, chord.name, 1);
+    }
+    // Notes line, small font, centered; truncate with "..." if overflow.
     var noteStr = chord.notes.join(' ');
-    print(3, 32, noteStr, 1);
+    if (noteStr.length * 6 > 124) {
+      var maxChars = Math.floor(124 / 6) - 3;
+      noteStr = noteStr.substring(0, maxChars) + '...';
+    }
+    var nw = noteStr.length * 6;
+    print(Math.max(2, Math.floor((128 - nw) / 2)), 52, noteStr, 1);
   }
 
   dirty = false;
