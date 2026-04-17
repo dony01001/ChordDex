@@ -1,0 +1,21 @@
+{
+    "id": "chorddex",
+    "name": "ChordDex",
+    "abbrev": "CDX",
+    "version": "1.0.0",
+    "description": "Chord & note recognizer for Ableton Move. Catch 'em all.",
+    "author": "custom",
+    "license": "MIT",
+    "ui": "ui.js",
+    "api_version": 2,
+    "component_type": "tool",
+    "tool_config": {
+        "interactive": true,
+        "skip_file_browser": true
+    },
+    "capabilities": {
+        "component_type": "tool",
+        "midi_in": true,
+        "skip_led_clear": true
+    }
+}
