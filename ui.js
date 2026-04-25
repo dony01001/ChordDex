@@ -44,6 +44,11 @@ var CHORD_PATTERNS = [
   { i: [0,4,8],      n: 'aug'  },
   { i: [0,2,7],      n: 'sus2' },
   { i: [0,5,7],      n: 'sus4' },
+  // Shell voicings (no 5th) — jazz common, pianist left hand
+  { i: [0,4,11],     n: 'maj7' },
+  { i: [0,4,10],     n: '7'    },
+  { i: [0,3,10],     n: 'm7'   },
+  { i: [0,3,11],     n: 'mM7'  },
   // Dyads
   { i: [0,7],        n: '5'    },
 ];
@@ -65,7 +70,8 @@ var SPLASH_FRAMES = 45; // how long the splash stays before fading to scale
 var LED_ROOT    = 120; // White — C (root), like the Pokédex screen
 var LED_SCALE   = 1;   // BrightRed — in-scale notes, Pokédex body
 var LED_OUT     = 0;   // Black — out-of-scale, off
-var LED_PRESSED = 7;   // VividYellow — pressed pad, Pokédex button
+var LED_PRESSED = 8;   // BrightYellow — pressed pad, Pokédex button
+var LED_GHOST   = 7;   // DimYellow — pads that were part of the last chord
 
 // Pokeball palette
 var LED_POKE_RED    = 127; // pure red — top half
@@ -83,6 +89,8 @@ function padLed(note, vel) {
 }
 
 function baseColor(note) {
+  // Ghost only on the physical pad the user pressed, not its twins.
+  if (chordPersist && peakPads[note] && !activeNotes[note]) return LED_GHOST;
   var p = pc(note);
   if (p === 0) return LED_ROOT;
   if (SCALE_MAJOR[p]) return LED_SCALE;
@@ -122,8 +130,9 @@ function paintTick() {
   var end = Math.min(paintIndex + PAINT_PER_TICK, 32);
   for (var i = paintIndex; i < end; i++) {
     var note = 68 + i;
-    // Preserve held pads with pressed color.
+    // Preserve held pads and their twin pads (same absolute pitch) with pressed color.
     if (activeNotes[note]) padLed(note, LED_PRESSED);
+    else if (semiHasActive(absSemi(note))) padLed(note, LED_PRESSED);
     else padLed(note, baseColor(note));
   }
   paintIndex = end;
@@ -314,7 +323,7 @@ var FONT_5x7 = {
   ' ':[0x00,0x00,0x00,0x00,0x00,0x00,0x00]
 };
 
-function bigPrint(x, y, text, color, scale) {
+function bigPrint(x, y, text, color, scale, dither) {
   var s = scale || 2;
   for (var i = 0; i < text.length; i++) {
     var glyph = FONT_5x7[text.charAt(i)];
@@ -323,7 +332,18 @@ function bigPrint(x, y, text, color, scale) {
         var bits = glyph[row];
         for (var col = 0; col < 5; col++) {
           if (bits & (1 << (4 - col))) {
-            fill_rect(x + col * s, y + row * s, s, s, color);
+            if (!dither) {
+              fill_rect(x + col * s, y + row * s, s, s, color);
+            } else {
+              // Checkerboard: fill half the sub-pixels in each scaled block.
+              for (var dy = 0; dy < s; dy++) {
+                for (var dx = 0; dx < s; dx++) {
+                  if ((dx + dy) % 2 === 0) {
+                    fill_rect(x + col * s + dx, y + row * s + dy, 1, 1, color);
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -332,12 +352,21 @@ function bigPrint(x, y, text, color, scale) {
   }
 }
 
-function bigPrintCentered(y, text, color, scale) {
+function bigPrintCentered(y, text, color, scale, dither) {
   var s = scale || 2;
   var w = text.length * 6 * s - s;
   var x = Math.max(0, Math.floor((128 - w) / 2));
-  bigPrint(x, y, text, color, scale);
+  bigPrint(x, y, text, color, scale, dither);
 }
+
+// Chord persistence / fade after release.
+// Ghost stays in dither forever until a new chord replaces it.
+var chordPersist = null;         // { name, notes } | null
+var buildingMaxCount = 0;        // peak note count in current press session
+var peakPads = {};               // { midiNote: 1 } — pads lit at peak of current chord
+var lastActiveCount   = 0;
+var releaseDebounceAt = 0;       // timestamp of most recent release event
+var RELEASE_DEBOUNCE_MS = 150;   // below this = "simultaneous", above = staggered
 
 // Screen reader support — announce changes for blind users.
 var lastAnnouncedLabel = '';
@@ -372,22 +401,56 @@ function draw() {
   print(2, 1, 'CHORDDEX', 0);
 
   var chord = getChord();
+  var activeCount = 0;
+  for (var _k in activeNotes) activeCount++;
+  var now = Date.now();
 
-  if (!chord) {
+  // Track drops to gate "staggered-release" acceptance by a debounce window.
+  if (activeCount < lastActiveCount) releaseDebounceAt = now;
+  lastActiveCount = activeCount;
+
+  if (activeCount === 0) {
+    buildingMaxCount = 0;
+  } else if (activeCount >= buildingMaxCount) {
+    // Growing or at peak — normal update. Snapshot pads for ghost.
+    var wasGrowing = activeCount > buildingMaxCount;
+    buildingMaxCount = activeCount;
+    if (chord) {
+      chordPersist = { name: chord.name, notes: chord.notes };
+      var newPeak = {};
+      for (var apk in activeNotes) newPeak[apk] = 1;
+      peakPads = newPeak;
+      // Old ghosts need clearing when a new chord starts being built.
+      if (wasGrowing) schedulePaintBase();
+    }
+  } else if (now - releaseDebounceAt >= RELEASE_DEBOUNCE_MS) {
+    // Stable lower count for a while — staggered release. Accept new voicing.
+    buildingMaxCount = activeCount;
+    if (chord) {
+      chordPersist = { name: chord.name, notes: chord.notes };
+      var nowPeak = {};
+      for (var apk2 in activeNotes) nowPeak[apk2] = 1;
+      peakPads = nowPeak;
+      schedulePaintBase();
+    }
+  }
+
+  var atPeak = activeCount > 0 && activeCount >= buildingMaxCount;
+  var show = atPeak ? chord : (chordPersist || chord);
+  var dither = (activeCount === 0) && !!chordPersist;
+
+  if (!show) {
     bigPrintCentered(22, '---', 1, 2);
     var msg = 'play some pads';
     print(Math.floor((128 - msg.length * 6) / 2), 52, msg, 1);
   } else {
-    // Auto-shrink: scale 2x if chord name fits (<=10 chars), else small.
-    if (chord.name.length * 12 <= 128) {
-      bigPrintCentered(18, chord.name, 1, 2);
+    if (show.name.length * 12 <= 128) {
+      bigPrintCentered(18, show.name, 1, 2, dither);
     } else {
-      // Fallback to normal print, centered.
-      var cw = chord.name.length * 6;
-      print(Math.max(2, Math.floor((128 - cw) / 2)), 24, chord.name, 1);
+      var cw = show.name.length * 6;
+      print(Math.max(2, Math.floor((128 - cw) / 2)), 24, show.name, 1);
     }
-    // Notes line, small font, centered; truncate with "..." if overflow.
-    var noteStr = chord.notes.join(' ');
+    var noteStr = show.notes.join(' ');
     if (noteStr.length * 6 > 124) {
       var maxChars = Math.floor(124 / 6) - 3;
       noteStr = noteStr.substring(0, maxChars) + '...';
@@ -396,7 +459,7 @@ function draw() {
     print(Math.max(2, Math.floor((128 - nw) / 2)), 52, noteStr, 1);
   }
 
-  // Screen reader: announce chord label when it changes.
+  // Screen reader: announce only when a live chord changes.
   var label = chord ? chord.name : '';
   if (label !== lastAnnouncedLabel) {
     lastAnnouncedLabel = label;
@@ -411,6 +474,11 @@ globalThis.init = function() {
   lastVelocity = 0;
   lastRawNote  = -1;
   lastAnnouncedLabel = '';
+  chordPersist = null;
+  buildingMaxCount = 0;
+  lastActiveCount  = 0;
+  releaseDebounceAt = 0;
+  peakPads = {};
   dirty        = true;
   schedulePaintBase();
   announce('ChordDex. Play pads to detect chords.');
@@ -419,6 +487,12 @@ globalThis.init = function() {
 
 globalThis.tick = function() {
   paintTick();
+  // Force redraw once the release-debounce window expires so a staggered
+  // release transitions without needing another MIDI event.
+  if (lastActiveCount > 0 && lastActiveCount < buildingMaxCount &&
+      Date.now() - releaseDebounceAt >= RELEASE_DEBOUNCE_MS) {
+    dirty = true;
+  }
   if (dirty) draw();
 };
 
@@ -431,8 +505,8 @@ globalThis.onMidiMessageInternal = function(msg) {
 
   // Back button (CC 51) — exit to Tools menu
   if (st === 0xB0 && note === 51 && vel === 127) {
-    padsAllOff();
-    host_exit_module();
+    if (typeof host_return_to_menu === 'function') host_return_to_menu();
+    else if (typeof host_exit_module === 'function') host_exit_module();
     return;
   }
 

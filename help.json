@@ -27,7 +27,10 @@
         "White: root (C)",
         "Red: in-scale notes",
         "Off: out-of-scale",
-        "Yellow: pressed pad",
+        "Yellow bright:",
+        " pressed pad",
+        "Yellow dim: ghost",
+        " (last chord held)",
         "",
         "Isomorphic twin",
         "pads (same pitch)",
@@ -147,10 +150,13 @@
         "button to return",
         "to the Tools menu.",
         "",
-        "Pads reset to the",
-        "native chromatic",
-        "coloring after",
-        "exit."
+        "Pads keep the",
+        "ChordDex coloring",
+        "after exit, so you",
+        "can replay or",
+        "program the last",
+        "chord straight",
+        "into the sequencer."
       ]
     },
     {

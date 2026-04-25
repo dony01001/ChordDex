@@ -2,7 +2,7 @@
     "id": "chorddex",
     "name": "ChordDex",
     "abbrev": "CDX",
-    "version": "1.1.4",
+    "version": "1.2.0",
     "description": "Chord & note recognizer for Ableton Move. Catch 'em all.",
     "author": "custom",
     "license": "MIT",
