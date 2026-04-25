@@ -9,13 +9,17 @@ Tool module for the [Schwung](https://github.com/charlesvestal/schwung) platform
 ## Features
 
 - Detects chords played on the Move pads and displays the name on the 128×64 screen
-- Supports triads, 6ths, 7ths, 9ths, sus, add, power, and slash chords
+- Supports triads, 6ths, 7ths, 9ths, 11ths, 13ths, sus, add, power, slash chords, and shell voicings (e.g. `C-E-B` = `Cmaj7`)
 - Uses the bass note as a tiebreaker for ambiguous voicings (e.g. `C6` vs `Am7`)
+- Chord name persists on screen after release with a dither fade until the next chord is played
+- Staggered release debounce (150ms): slow releases keep updating the chord name, fast releases freeze the peak voicing
 - Pad coloring:
   - **Root** (C): white
   - **In-scale** notes (C major): red
   - **Out-of-scale** notes: off
-  - **Pressed** pads: yellow
+  - **Pressed** pads: bright yellow
+  - **Ghost** (last chord's pads): dim yellow
+- On exit, pads keep the last ChordDex coloring so the chord stays visible for replaying or programming into the sequencer
 - Big 2x-scaled chord name on screen with auto-shrink
 
 
